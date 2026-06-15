@@ -56,6 +56,9 @@
         .tonearm-transition {
             transition: transform 0.8s cubic-bezier(0.25, 1, 0.5, 1);
         }
+        .touch-manipulation {
+            touch-action: manipulation;
+        }
     </style>
 </head>
 <body class="text-zinc-100 overflow-x-hidden">
@@ -95,15 +98,6 @@
             const [equalizerHeights, setEqualizerHeights] = useState([30, 15, 45, 20, 35, 50, 25, 40, 10, 30, 45, 15]);
 
             useEffect(() => {
-                audioRef.current = new Audio(streamUrl);
-                audioRef.current.volume = volume;
-
-                // Handle audio errors gracefully
-                audioRef.current.addEventListener('error', (e) => {
-                    console.log("Audio Stream interrupted. Rescheduling connection.", e);
-                });
-
-                // Live Venezuelan Time
                 const updateClock = () => {
                     const now = new Date();
                     setCurrentTimeStr(now.toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
@@ -120,18 +114,31 @@
                 };
             }, []);
 
-            const changeStreamUrl = (newUrl) => {
-                const wasPlaying = isPlaying;
+            const getOrCreateAudio = (url) => {
                 if (audioRef.current) {
                     audioRef.current.pause();
+                    audioRef.current.removeAttribute('src');
+                    audioRef.current.load();
                 }
-                
+                const audio = new Audio();
+                audio.preload = 'auto';
+                audio.src = url;
+                audio.volume = volume;
+                audio.addEventListener('error', () => {
+                    showNotification("Se perdió la conexión con la señal.");
+                    setIsPlaying(false);
+                });
+                audioRef.current = audio;
+                return audio;
+            };
+
+            const changeStreamUrl = (newUrl) => {
+                const wasPlaying = isPlaying;
                 setStreamUrl(newUrl);
-                audioRef.current = new Audio(newUrl);
-                audioRef.current.volume = volume;
+                const audio = getOrCreateAudio(newUrl);
                 
                 if (wasPlaying) {
-                    audioRef.current.play()
+                    audio.play()
                         .then(() => setIsPlaying(true))
                         .catch(err => {
                             console.error("Audio error: ", err);
@@ -142,22 +149,23 @@
             };
 
             const handlePlayPause = () => {
-                if (!audioRef.current) return;
-                
                 if (isPlaying) {
-                    audioRef.current.pause();
+                    if (audioRef.current) {
+                        audioRef.current.pause();
+                    }
                     setIsPlaying(false);
                     showNotification("Transmisión en pausa");
                 } else {
+                    const audio = getOrCreateAudio(streamUrl);
                     showNotification("Sintonizando señal en vivo...");
-                    audioRef.current.play()
+                    audio.play()
                         .then(() => {
                             setIsPlaying(true);
                             showNotification("¡Al Aire! Escuchando Oscar Estéreo 88.1 FM");
                         })
                         .catch(err => {
                             console.error("Error playing audio: ", err);
-                            showNotification("Problema de conexión temporal con la señal.");
+                            showNotification("No se pudo conectar. Verifica tu conexión de datos.");
                             setIsPlaying(false);
                         });
                 }
@@ -447,7 +455,7 @@
                                         {/* Circular Big Play Button */}
                                         <button 
                                             onClick={handlePlayPause}
-                                            className={`w-14 h-14 rounded-full flex items-center justify-center text-white transition-all transform hover:scale-105 shadow-lg ${isPlaying ? 'bg-zinc-800 hover:bg-zinc-700 shadow-zinc-950/40' : 'bg-rose-600 hover:bg-rose-700 shadow-rose-600/30'}`}
+                                            className={`w-14 h-14 rounded-full flex items-center justify-center text-white transition-all transform hover:scale-105 shadow-lg touch-manipulation ${isPlaying ? 'bg-zinc-800 hover:bg-zinc-700 shadow-zinc-950/40' : 'bg-rose-600 hover:bg-rose-700 shadow-rose-600/30'}`}
                                         >
                                             <i className={`fas ${isPlaying ? 'fa-pause text-lg' : 'fa-play text-xl ml-1'}`}></i>
                                         </button>
