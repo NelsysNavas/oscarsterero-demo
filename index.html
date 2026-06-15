@@ -80,6 +80,7 @@
             const [customUrlInput, setCustomUrlInput] = useState("");
             const [showSettings, setShowSettings] = useState(false);
             const [currentTimeStr, setCurrentTimeStr] = useState("");
+            const [broadcastStatus, setBroadcastStatus] = useState("idle");
             
             // Interaction Board State
             const [comments, setComments] = useState([
@@ -95,6 +96,7 @@
 
             const audioRef = useRef(null);
             const visualizerInterval = useRef(null);
+            const staleTimerRef = useRef(null);
             const [equalizerHeights, setEqualizerHeights] = useState([30, 15, 45, 20, 35, 50, 25, 40, 10, 30, 45, 15]);
 
             useEffect(() => {
@@ -106,6 +108,7 @@
                 const clockInterval = setInterval(updateClock, 1000);
 
                 return () => {
+                    clearTimeout(staleTimerRef.current);
                     if (audioRef.current) {
                         audioRef.current.pause();
                         audioRef.current = null;
@@ -117,17 +120,56 @@
             const getOrCreateAudio = (url) => {
                 if (audioRef.current) {
                     audioRef.current.pause();
+                    audioRef.current.onerror = null;
+                    audioRef.current.onplaying = null;
+                    audioRef.current.onstalled = null;
+                    audioRef.current.onwaiting = null;
+                    audioRef.current.onemptied = null;
                     audioRef.current.removeAttribute('src');
                     audioRef.current.load();
                 }
+                clearTimeout(staleTimerRef.current);
+
                 const audio = new Audio();
                 audio.preload = 'auto';
-                audio.src = url;
                 audio.volume = volume;
-                audio.addEventListener('error', () => {
-                    showNotification("Se perdió la conexión con la señal.");
+
+                audio.onerror = () => {
+                    setBroadcastStatus("off_air");
+                    showNotification("No se pudo conectar con la señal.");
                     setIsPlaying(false);
-                });
+                };
+
+                audio.onplaying = () => {
+                    setBroadcastStatus("on_air");
+                    clearTimeout(staleTimerRef.current);
+                };
+
+                const startStaleTimer = () => {
+                    clearTimeout(staleTimerRef.current);
+                    staleTimerRef.current = setTimeout(() => {
+                        if (audioRef.current && !audioRef.current.paused) {
+                            setBroadcastStatus("off_air");
+                            showNotification("Disculpe, en estos momentos no estamos al aire.");
+                        }
+                    }, 12000);
+                };
+
+                audio.onstalled = () => {
+                    setBroadcastStatus("connecting");
+                    startStaleTimer();
+                };
+
+                audio.onwaiting = () => {
+                    setBroadcastStatus("connecting");
+                    startStaleTimer();
+                };
+
+                audio.onemptied = () => {
+                    setBroadcastStatus("off_air");
+                };
+
+                audio.src = url;
                 audioRef.current = audio;
                 return audio;
             };
@@ -153,18 +195,23 @@
                     if (audioRef.current) {
                         audioRef.current.pause();
                     }
+                    clearTimeout(staleTimerRef.current);
                     setIsPlaying(false);
+                    setBroadcastStatus("idle");
                     showNotification("Transmisión en pausa");
                 } else {
                     const audio = getOrCreateAudio(streamUrl);
+                    setBroadcastStatus("connecting");
                     showNotification("Sintonizando señal en vivo...");
                     audio.play()
                         .then(() => {
                             setIsPlaying(true);
+                            setBroadcastStatus("on_air");
                             showNotification("¡Al Aire! Escuchando Oscar Estéreo 88.1 FM");
                         })
                         .catch(err => {
                             console.error("Error playing audio: ", err);
+                            setBroadcastStatus("off_air");
                             showNotification("No se pudo conectar. Verifica tu conexión de datos.");
                             setIsPlaying(false);
                         });
@@ -267,9 +314,17 @@
                                     <span className="text-sm font-bold font-display text-zinc-200">{currentTimeStr || "--:--:--"}</span>
                                 </div>
                                 <div className="flex items-center gap-2 bg-zinc-900 border border-zinc-800 px-3.5 py-1.5 rounded-full">
-                                    <span className={`w-2.5 h-2.5 rounded-full ${isPlaying ? 'bg-emerald-500 animate-ping' : 'bg-rose-600'}`}></span>
+                                    <span className={`w-2.5 h-2.5 rounded-full ${
+                                        broadcastStatus === 'on_air' ? 'bg-emerald-500 animate-ping' :
+                                        broadcastStatus === 'connecting' ? 'bg-yellow-500 animate-pulse' :
+                                        broadcastStatus === 'off_air' ? 'bg-rose-600' :
+                                        'bg-zinc-600'
+                                    }`}></span>
                                     <span className="text-xs font-bold tracking-wider uppercase text-zinc-300">
-                                        {isPlaying ? "En Vivo" : "Sintonizar"}
+                                        {broadcastStatus === 'on_air' ? "En Vivo" :
+                                         broadcastStatus === 'connecting' ? "Conectando..." :
+                                         broadcastStatus === 'off_air' ? "Sin Señal" :
+                                         "Sintonizar"}
                                     </span>
                                 </div>
                             </div>
@@ -440,13 +495,30 @@
 
                                     {/* Track / Show Info */}
                                     <div className="text-center mb-4">
-                                        <div className="text-xs text-rose-500 font-bold uppercase tracking-widest flex items-center justify-center gap-1.5">
-                                            <span className="w-1.5 h-1.5 rounded-full bg-rose-600 animate-pulse"></span>
-                                            Transmitiendo Ahora
+                                        <div className={`text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-1.5 ${
+                                            broadcastStatus === 'on_air' ? 'text-emerald-500' :
+                                            broadcastStatus === 'connecting' ? 'text-yellow-500' :
+                                            broadcastStatus === 'off_air' ? 'text-rose-500' :
+                                            'text-rose-500'
+                                        }`}>
+                                            <span className={`w-1.5 h-1.5 rounded-full ${
+                                                broadcastStatus === 'on_air' ? 'bg-emerald-500 animate-pulse' :
+                                                broadcastStatus === 'connecting' ? 'bg-yellow-500 animate-pulse' :
+                                                'bg-rose-600'
+                                            }`}></span>
+                                            {broadcastStatus === 'on_air' ? "Transmitiendo Ahora" :
+                                             broadcastStatus === 'connecting' ? "Conectando con la señal..." :
+                                             broadcastStatus === 'off_air' ? "Disculpe, no estamos al aire" :
+                                             "Transmitiendo Ahora"}
                                         </div>
-                                        <h2 className="text-lg font-black text-white leading-tight font-display mt-0.5">Señal en Vivo HD</h2>
+                                        <h2 className="text-lg font-black text-white leading-tight font-display mt-0.5">
+                                            {broadcastStatus === 'off_air' ? "Estación Fuera del Aire" : "Señal en Vivo HD"}
+                                        </h2>
                                         <p className="text-xs text-zinc-400 mt-1 truncate">
-                                            {streamUrl === PRESET_STREAMS[0].url ? "Variedad Musical de Lara" : "Frecuencia Satelital Alternativa"}
+                                            {broadcastStatus === 'off_air'
+                                                ? "Intenta nuevamente en unos minutos"
+                                                : streamUrl === PRESET_STREAMS[0].url ? "Variedad Musical de Lara" : "Frecuencia Satelital Alternativa"
+                                            }
                                         </p>
                                     </div>
 
