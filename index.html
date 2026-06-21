@@ -6,21 +6,20 @@
     <title>Oscar Estéreo 88.1 FM | Quebrada Arriba, Lara</title>
     <link rel="icon" type="image/png" href="images/favicon.png">
     
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Tailwind CSS (local) -->
+    <script src="js/tailwindcss.js"></script>
     
-    <!-- FontAwesome Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- FontAwesome Icons (local) -->
+    <link rel="stylesheet" href="css/font-awesome.min.css">
     
-    <!-- Google Fonts: Inter & Outfit -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+    <!-- Google Fonts: Inter & Outfit (local) -->
+    <link rel="stylesheet" href="css/local-fonts.css">
     
-    <!-- React and Babel CDN -->
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- React and ReactDOM (local) -->
+    <script src="js/react.production.min.js"></script>
+    <script src="js/react-dom.production.min.js"></script>
+    <!-- Babel standalone (local) -->
+    <script src="js/babel.min.js"></script>
 
     <style>
         body {
@@ -582,10 +581,10 @@
                             {/* Main Radio Banner from Mesa de trabajo 1-100.jpg */}
                             <div className="relative bg-zinc-900 p-3 rounded-3xl border border-zinc-800 shadow-xl overflow-hidden group">
                                 <img 
-                                    src="Mesa de trabajo 1-100.jpg" 
+                                    src="images/logo_oscar-stereo.png" 
                                     alt="Oscar Estéreo 88.1 FM Banner" 
                                     className="w-full h-auto rounded-2xl object-cover grayscale opacity-90 group-hover:grayscale-0 group-hover:opacity-100 transition-all duration-700"
-                                    onError={(e) => { e.target.src='https://placehold.co/600x200/222222/e11d48?text=Oscar+Estéreo+Banner' }}
+                                    onError={(e) => { e.target.src='https://placehold.co/600x200/222222/e11d48?text=Oscar+Est%C3%A9reo+Banner' }}
                                 />
                                 <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-transparent to-transparent opacity-60"></div>
                             </div>
